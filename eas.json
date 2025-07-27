@@ -7,15 +7,24 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "18.20.2"
+      "node": "18.20.2",
+      "env": {
+        "EXPO_FORCE_NPM": "true"
+      }
     },
     "preview": {
       "distribution": "internal",
-      "node": "18.20.2"
+      "node": "18.20.2",
+      "env": {
+        "EXPO_FORCE_NPM": "true"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "node": "18.20.2"
+      "node": "18.20.2",
+      "env": {
+        "EXPO_FORCE_NPM": "true"
+      }
     }
   },
   "submit": {
