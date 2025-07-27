@@ -7,29 +7,20 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "18.20.3",
-      "experimental": {
-        "npm": {
-          "legacyInstall": true
-        }
+      "node": {
+        "installationMode": "hoisted"
       }
     },
     "preview": {
       "distribution": "internal",
-      "node": "18.20.3",
-      "experimental": {
-        "npm": {
-          "legacyInstall": true
-        }
+      "node": {
+        "installationMode": "hoisted"
       }
     },
     "production": {
       "autoIncrement": true,
-      "node": "18.20.3",
-      "experimental": {
-        "npm": {
-          "legacyInstall": true
-        }
+      "node": {
+        "installationMode": "hoisted"
       }
     }
   },
