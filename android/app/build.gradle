@@ -1,0 +1,108 @@
+apply plugin: "com.android.application"
+apply plugin: "com.facebook.react"
+
+def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+
+react {
+    entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
+    reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+    hermesCommand = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
+    codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+    enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
+    cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
+    bundleCommand = "export:embed"
+    autolinkLibrariesWithApp()
+}
+
+// Utilisation sécurisée avec fallback (si jamais rootProject.ext n'est pas défini)
+def ndkVersionSafe = rootProject.ext.has("ndkVersion") ? rootProject.ext.ndkVersion : "25.2.9519653"
+def compileSdkVersionSafe = rootProject.ext.has("compileSdkVersion") ? rootProject.ext.compileSdkVersion : 35
+def minSdkVersionSafe = rootProject.ext.has("minSdkVersion") ? rootProject.ext.minSdkVersion : 24
+def targetSdkVersionSafe = rootProject.ext.has("targetSdkVersion") ? rootProject.ext.targetSdkVersion : 35
+
+android {
+    ndkVersion ndkVersionSafe
+    compileSdk compileSdkVersionSafe
+
+    namespace 'com.sabri2311.cardiohubpatientnative'
+    defaultConfig {
+        applicationId 'com.sabri2311.cardiohubpatientnative'
+        minSdkVersion minSdkVersionSafe
+        targetSdkVersion targetSdkVersionSafe
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.debug
+            shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
+            minifyEnabled (findProperty('android.enableProguardInReleaseBuilds')?.toBoolean() ?: false)
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
+        }
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
+        }
+    }
+
+    androidResources {
+        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+}
+
+// Gestion packaging options dynamiques
+["pickFirsts", "excludes", "merges", "doNotStrip"].each { prop ->
+    def options = (findProperty("android.packagingOptions.$prop") ?: "").split(",");
+    for (i in 0..<options.size()) options[i] = options[i].trim();
+    options -= ""
+    if (options.length > 0) {
+        println "android.packagingOptions.$prop += $options ($options.length)"
+        options.each {
+            android.packagingOptions[prop] += it
+        }
+    }
+}
+
+dependencies {
+    implementation("com.facebook.react:react-android")
+
+    def frescoVersion = "2.6.0"
+    def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true"
+    def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true"
+    def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true"
+
+    if (isGifEnabled) {
+        implementation("com.facebook.fresco:animated-gif:$frescoVersion")
+    }
+    if (isWebpEnabled) {
+        implementation("com.facebook.fresco:webpsupport:$frescoVersion")
+        if (isWebpAnimatedEnabled) {
+            implementation("com.facebook.fresco:animated-webp:$frescoVersion")
+        }
+    }
+
+    def hermesEnabled = (findProperty("expo.hermes.enabled") ?: "true").toBoolean()
+    def jscFlavor = "io.github.react-native-community:jsc-android:2026004.+"
+
+    if (hermesEnabled) {
+        implementation("com.facebook.react:hermes-android")
+    } else {
+        implementation jscFlavor
+    }
+}

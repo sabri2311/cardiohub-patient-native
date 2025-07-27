@@ -1,18 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import socket from '../utils/socket';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import WebView from 'react-native-webview';
 import ECGDisplay from '../components/ECGDisplay';
-
-const isExpoGo = typeof global.__expo !== 'undefined';
-
-let JitsiMeet = null;
-let movesense = {};
-
-if (Platform.OS !== 'web' && !isExpoGo) {
-  JitsiMeet = require('react-native-jitsi-meet');
-  movesense = require('../services/movesenseService');
-}
+import movesense from '../services/movesenseService';
+import socket from '../utils/socket';
 
 const SessionGroupePatient = () => {
   const route = useRoute();
@@ -23,8 +15,7 @@ const SessionGroupePatient = () => {
   const [chrono, setChrono] = useState(0);
   const [ecgData, setEcgData] = useState([]);
   const [frequenceCardiaque, setFrequenceCardiaque] = useState(null);
-  const [jitsiLance, setJitsiLance] = useState(false);
-  const jitsiStartedRef = useRef(false);
+  const [visioActive, setVisioActive] = useState(false);
   const chronoRef = useRef(null);
 
   useEffect(() => {
@@ -45,24 +36,12 @@ const SessionGroupePatient = () => {
   }, [groupeId, patientId]);
 
   useEffect(() => {
-    if (room && !jitsiLance && !jitsiStartedRef.current) {
-      jitsiStartedRef.current = true;
-
-      lancerVisio();
+    if (room) {
       lancerChrono();
       connecterCapteur();
+      setVisioActive(true);
     }
   }, [room]);
-
-  const lancerVisio = () => {
-    if (!JitsiMeet) return;
-
-    const userInfo = { displayName: `Patient ${patientId}`, email: '', avatar: '' };
-    setTimeout(() => {
-      JitsiMeet.call(room, userInfo);
-      setJitsiLance(true);
-    }, 500);
-  };
 
   const lancerChrono = () => {
     chronoRef.current = setInterval(() => {
@@ -105,7 +84,6 @@ const SessionGroupePatient = () => {
     clearInterval(chronoRef.current);
     if (movesense.stopECG) movesense.stopECG();
     if (movesense.disconnectDevice) movesense.disconnectDevice();
-    if (JitsiMeet) JitsiMeet.endCall();
     Alert.alert('Séance terminée', 'Merci pour votre participation !');
     navigation.navigate('AgendaPatient');
   };
@@ -116,17 +94,26 @@ const SessionGroupePatient = () => {
     return `${min}m ${s < 10 ? '0' : ''}${s}s`;
   };
 
+  const getMeetUrl = () => {
+    return `https://meet.jit.si/${room}#userInfo.displayName="Patient-${patientId}"`;
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>🚴‍♂️ Réentraînement collectif – Patient</Text>
 
-      {!JitsiMeet || !movesense.startScan ? (
-        <Text style={styles.status}>
-          ❌ Visio ou capteur non disponible dans Expo Go
-        </Text>
-      ) : room ? (
+      {room && visioActive ? (
         <>
-          <Text style={styles.status}>✅ Visio en cours – Groupe {groupeId}</Text>
+          <View style={styles.visioContainer}>
+            <WebView
+              source={{ uri: getMeetUrl() }}
+              style={{ flex: 1 }}
+              javaScriptEnabled
+              domStorageEnabled
+              allowsInlineMediaPlayback
+              mediaPlaybackRequiresUserAction={false}
+            />
+          </View>
 
           <View style={styles.box}>
             <Text style={styles.label}>⏱️ Chronomètre</Text>
@@ -156,31 +143,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f4f7fa',
     padding: 20,
-    alignItems: 'center',
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 15,
     textAlign: 'center',
   },
   status: {
     fontSize: 16,
-    marginBottom: 20,
+    marginTop: 50,
+    textAlign: 'center',
     color: '#333',
+  },
+  visioContainer: {
+    height: 400,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 20,
   },
   box: {
     backgroundColor: '#fff',
     padding: 12,
     borderRadius: 8,
-    width: '90%',
     marginBottom: 12,
     alignItems: 'center',
     elevation: 2,
   },
   label: {
-    color: '#666',
     fontSize: 14,
+    color: '#555',
   },
   value: {
     fontSize: 20,
@@ -188,11 +180,12 @@ const styles = StyleSheet.create({
     color: '#111',
   },
   buttonQuitter: {
-    marginTop: 20,
     backgroundColor: 'red',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    alignSelf: 'center',
+    marginTop: 20,
   },
   buttonText: {
     color: '#fff',

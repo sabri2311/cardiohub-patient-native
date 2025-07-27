@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ECGDisplay from '../components/ECGDisplay';
 
 const isExpoGo = typeof global.__expo !== 'undefined';
@@ -9,8 +9,12 @@ let JitsiMeet = null;
 let movesense = {};
 
 if (Platform.OS !== 'web' && !isExpoGo) {
-  JitsiMeet = require('react-native-jitsi-meet');
-  movesense = require('../services/movesenseService');
+  try {
+    JitsiMeet = require('react-native-jitsi-meet');
+    movesense = require('../services/movesenseService');
+  } catch (error) {
+    console.warn('❌ Erreur chargement Jitsi ou Movesense :', error);
+  }
 }
 
 const SessionVeloPatient = () => {
@@ -22,6 +26,7 @@ const SessionVeloPatient = () => {
   const [frequenceCardiaque, setFrequenceCardiaque] = useState(null);
   const [ecgData, setEcgData] = useState([]);
   const [jitsiLance, setJitsiLance] = useState(false);
+
   const jitsiRef = useRef(false);
   const chronoRef = useRef(null);
 
@@ -41,8 +46,9 @@ const SessionVeloPatient = () => {
   }, []);
 
   const lancerVisio = () => {
-    if (!JitsiMeet || jitsiRef.current) return;
+    if (jitsiRef.current) return;
     jitsiRef.current = true;
+
     const room = `CardioHub-Velo-Session-${patientId}`;
     const userInfo = {
       displayName: `Patient ${patientId}`,
@@ -51,8 +57,12 @@ const SessionVeloPatient = () => {
     };
 
     setTimeout(() => {
-      JitsiMeet.call(room, userInfo);
-      setJitsiLance(true);
+      try {
+        JitsiMeet.call(room, userInfo);
+        setJitsiLance(true);
+      } catch (err) {
+        console.warn('❌ Erreur Jitsi :', err);
+      }
     }, 500);
   };
 
@@ -63,8 +73,6 @@ const SessionVeloPatient = () => {
   };
 
   const connecterCapteur = async () => {
-    if (!movesense.startScan) return;
-
     try {
       await movesense.startScan(async (device) => {
         await movesense.connectToDevice(device);
@@ -106,7 +114,7 @@ const SessionVeloPatient = () => {
       <Text style={styles.title}>🚴‍♂️ Séance individuelle – Vélo</Text>
 
       {!JitsiMeet || !movesense.startScan ? (
-        <Text style={styles.label}>❌ Visio ou capteur non disponible dans Expo Go</Text>
+        <Text style={styles.label}>❌ Visio ou capteur indisponible dans Expo Go</Text>
       ) : (
         <>
           <View style={styles.box}>

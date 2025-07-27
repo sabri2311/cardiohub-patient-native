@@ -1,17 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
-import { useRoute, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Audio } from 'expo-av';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 import socket from '../utils/socket';
-
-let JitsiMeet = null;
-try {
-  if (Platform.OS !== 'web' && !global.__expo) {
-    JitsiMeet = require('react-native-jitsi-meet');
-  }
-} catch (e) {
-  console.log('📛 JitsiMeet non disponible (probablement Expo Go)');
-}
 
 const TeleconsultationPatient = () => {
   const route = useRoute();
@@ -20,8 +12,21 @@ const TeleconsultationPatient = () => {
   const [enAttente, setEnAttente] = useState(true);
   const [appelEntrant, setAppelEntrant] = useState(false);
   const [appelRoom, setAppelRoom] = useState(null);
+  const [jitsiIndispo, setJitsiIndispo] = useState(false);
   const jitsiLaunchedRef = useRef(false);
   const soundRef = useRef(null);
+
+  const canUseNativeJitsi = typeof global.nativeCallSyncHook !== 'undefined' && Platform.OS !== 'web';
+  let JitsiMeet = null;
+  try {
+    if (canUseNativeJitsi) {
+      JitsiMeet = require('react-native-jitsi-meet');
+    } else {
+      setJitsiIndispo(true);
+    }
+  } catch (e) {
+    setJitsiIndispo(true);
+  }
 
   useFocusEffect(
     React.useCallback(() => {
@@ -91,7 +96,7 @@ const TeleconsultationPatient = () => {
   };
 
   const lancerVisio = (room) => {
-    if (!JitsiMeet || jitsiLaunchedRef.current) return;
+    if (jitsiLaunchedRef.current) return;
     jitsiLaunchedRef.current = true;
 
     const url = `https://meet.jit.si/${room}`;
@@ -102,12 +107,20 @@ const TeleconsultationPatient = () => {
     };
 
     setVisioActive(true);
-    setTimeout(() => {
-      JitsiMeet.call(url, userInfo);
-    }, 500);
     stopRingtone();
     setAppelEntrant(false);
+
+    if (JitsiMeet) {
+      setTimeout(() => {
+        JitsiMeet.call(url, userInfo);
+      }, 500);
+    } else {
+      // WebView fallback
+      setWebViewUrl(url);
+    }
   };
+
+  const [webViewUrl, setWebViewUrl] = useState(null);
 
   const accepterAppel = () => {
     if (appelRoom) {
@@ -123,11 +136,15 @@ const TeleconsultationPatient = () => {
     Alert.alert('Appel refusé', 'Vous avez refusé l\'appel.');
   };
 
+  if (webViewUrl) {
+    return <WebView source={{ uri: webViewUrl }} style={{ flex: 1 }} />;
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Téléconsultation</Text>
 
-      {!JitsiMeet ? (
+      {jitsiIndispo ? (
         <Text style={styles.status}>❌ Visio non disponible dans Expo Go</Text>
       ) : appelEntrant ? (
         <View style={styles.appelContainer}>
