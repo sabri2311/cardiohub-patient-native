@@ -7,21 +7,15 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": {
-        "installationMode": "hoisted"
-      }
+      "node": "18.20.2"
     },
     "preview": {
       "distribution": "internal",
-      "node": {
-        "installationMode": "hoisted"
-      }
+      "node": "18.20.2"
     },
     "production": {
       "autoIncrement": true,
-      "node": {
-        "installationMode": "hoisted"
-      }
+      "node": "18.20.2"
     }
   },
   "submit": {
