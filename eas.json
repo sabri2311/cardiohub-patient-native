@@ -6,13 +6,31 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "node": "18.20.3",
+      "experimental": {
+        "npm": {
+          "legacyInstall": true
+        }
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "node": "18.20.3",
+      "experimental": {
+        "npm": {
+          "legacyInstall": true
+        }
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "node": "18.20.3",
+      "experimental": {
+        "npm": {
+          "legacyInstall": true
+        }
+      }
     }
   },
   "submit": {
